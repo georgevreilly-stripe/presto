@@ -16,12 +16,14 @@ package io.prestosql.plugin.hive;
 import com.google.common.collect.ImmutableSet;
 import io.prestosql.plugin.hive.authentication.ImpersonatingHdfsAuthentication;
 import io.prestosql.plugin.hive.authentication.SimpleHadoopAuthentication;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertSame;
@@ -50,6 +52,7 @@ public class TestFileSystemCache
     private FileSystem getFileSystem(HdfsEnvironment environment, String user)
             throws IOException
     {
-        return environment.getFileSystem(user, new Path("/"), new Configuration(false));
+        ConnectorIdentity identity = new ConnectorIdentity(user, Optional.empty(), Optional.empty());
+        return environment.getFileSystem(identity, new Path("/"), new Configuration(false));
     }
 }

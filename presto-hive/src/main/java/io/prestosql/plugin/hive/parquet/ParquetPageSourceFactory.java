@@ -35,6 +35,7 @@ import io.prestosql.spi.connector.ConnectorPageSource;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.TupleDomain;
+import io.prestosql.spi.security.ConnectorIdentity;
 import io.prestosql.spi.type.Type;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -139,7 +140,7 @@ public class ParquetPageSourceFactory
                 isUseParquetColumnNames(session),
                 hdfsEnvironment,
                 configuration,
-                session.getUser(),
+                session.getIdentity(),
                 stats,
                 options.withFailOnCorruptedStatistics(isFailOnCorruptedParquetStatistics(session))
                         .withMaxReadBlockSize(getParquetMaxReadBlockSize(session))));
@@ -158,7 +159,7 @@ public class ParquetPageSourceFactory
             boolean useColumnNames,
             HdfsEnvironment hdfsEnvironment,
             Configuration configuration,
-            String user,
+            ConnectorIdentity identity,
             FileFormatDataSourceStats stats,
             ParquetReaderOptions options)
     {
@@ -170,13 +171,14 @@ public class ParquetPageSourceFactory
         MessageColumnIO messageColumn;
         ParquetReader parquetReader;
         ParquetDataSource dataSource = null;
+        String user = identity.getUser();
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(user, path, configuration);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(identity, path, configuration);
             FSDataInputStream inputStream = hdfsEnvironment.doAs(user, () -> fileSystem.open(path));
             ParquetMetadata parquetMetadata = MetadataReader.readFooter(inputStream, path, fileSize);
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
             fileSchema = fileMetaData.getSchema();
-            dataSource = buildHdfsParquetDataSource(inputStream, path, fileSize, stats, options);
+            dataSource = buildHdfsParquetDataSource(identity, inputStream, path, fileSize, stats, options);
 
             Optional<MessageType> message = projectSufficientColumns(columns)
                     .map(ReaderProjections::getReaderColumns)

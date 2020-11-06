@@ -31,6 +31,7 @@ import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.TupleDomain;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -894,8 +895,9 @@ public class TestBackgroundHiveSplitLoader
         }
 
         @Override
-        public FileSystem getFileSystem(String user, Path path, Configuration configuration)
+        public FileSystem getFileSystem(ConnectorIdentity identity, Path path, Configuration configuration)
         {
+            setConnectorIdentity(identity);
             return new TestingHdfsFileSystem(files);
         }
     }

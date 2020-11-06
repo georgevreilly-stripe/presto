@@ -52,6 +52,7 @@ import io.prestosql.spi.connector.ConnectorTableHandle;
 import io.prestosql.spi.connector.ConnectorTransactionHandle;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.TupleDomain;
+import io.prestosql.spi.security.ConnectorIdentity;
 import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
 import org.apache.hadoop.conf.Configuration;
@@ -196,7 +197,7 @@ public class IcebergPageSourceProvider
                 long fileSize = fileStatus.getLen();
                 return createOrcPageSource(
                         hdfsEnvironment,
-                        session.getUser(),
+                        session.getIdentity(),
                         hdfsEnvironment.getConfiguration(hdfsContext, path),
                         path,
                         start,
@@ -217,7 +218,7 @@ public class IcebergPageSourceProvider
             case PARQUET:
                 return createParquetPageSource(
                         hdfsEnvironment,
-                        session.getUser(),
+                        session.getIdentity(),
                         hdfsEnvironment.getConfiguration(hdfsContext, path),
                         path,
                         start,
@@ -234,7 +235,7 @@ public class IcebergPageSourceProvider
 
     private static ConnectorPageSource createOrcPageSource(
             HdfsEnvironment hdfsEnvironment,
-            String user,
+            ConnectorIdentity identity,
             Configuration configuration,
             Path path,
             long start,
@@ -247,8 +248,8 @@ public class IcebergPageSourceProvider
     {
         OrcDataSource orcDataSource = null;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(user, path, configuration);
-            FSDataInputStream inputStream = hdfsEnvironment.doAs(user, () -> fileSystem.open(path));
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(identity, path, configuration);
+            FSDataInputStream inputStream = hdfsEnvironment.doAs(identity.getUser(), () -> fileSystem.open(path));
             orcDataSource = new HdfsOrcDataSource(
                     new OrcDataSourceId(path.toString()),
                     fileSize,
@@ -342,7 +343,7 @@ public class IcebergPageSourceProvider
 
     private static ConnectorPageSource createParquetPageSource(
             HdfsEnvironment hdfsEnvironment,
-            String user,
+            ConnectorIdentity identity,
             Configuration configuration,
             Path path,
             long start,
@@ -354,13 +355,14 @@ public class IcebergPageSourceProvider
     {
         AggregatedMemoryContext systemMemoryContext = newSimpleAggregatedMemoryContext();
 
+        String user = identity.getUser();
         ParquetDataSource dataSource = null;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(user, path, configuration);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(identity, path, configuration);
             FileStatus fileStatus = fileSystem.getFileStatus(path);
             long fileSize = fileStatus.getLen();
             FSDataInputStream inputStream = hdfsEnvironment.doAs(user, () -> fileSystem.open(path));
-            dataSource = buildHdfsParquetDataSource(inputStream, path, fileSize, fileFormatDataSourceStats, options);
+            dataSource = buildHdfsParquetDataSource(identity, inputStream, path, fileSize, fileFormatDataSourceStats, options);
             ParquetMetadata parquetMetadata = MetadataReader.readFooter(fileSystem, path, fileSize);
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
             MessageType fileSchema = fileMetaData.getSchema();

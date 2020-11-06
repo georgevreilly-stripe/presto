@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import io.prestosql.orc.OrcReaderOptions;
 import io.prestosql.plugin.hive.FileFormatDataSourceStats;
+import io.prestosql.spi.security.ConnectorIdentity;
 import io.prestosql.testing.MaterializedResult;
 import io.prestosql.testing.MaterializedRow;
 import org.apache.hadoop.conf.Configuration;
@@ -25,6 +26,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Optional;
 
 import static io.prestosql.plugin.hive.HiveTestUtils.HDFS_ENVIRONMENT;
 import static io.prestosql.plugin.hive.HiveTestUtils.SESSION;
@@ -39,9 +41,10 @@ public class TestOrcDeleteDeltaPageSource
             throws Exception
     {
         File deleteDeltaFile = new File(Resources.getResource("fullacid_delete_delta_test/delete_delta_0000004_0000004_0000/bucket_00000").toURI());
+        ConnectorIdentity identity = new ConnectorIdentity("test", Optional.empty(), Optional.empty());
         OrcDeleteDeltaPageSourceFactory pageSourceFactory = new OrcDeleteDeltaPageSourceFactory(
                 new OrcReaderOptions(),
-                "test",
+                identity,
                 new JobConf(new Configuration(false)),
                 HDFS_ENVIRONMENT,
                 new FileFormatDataSourceStats());

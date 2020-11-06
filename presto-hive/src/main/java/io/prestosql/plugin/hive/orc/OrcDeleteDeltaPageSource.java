@@ -27,6 +27,7 @@ import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.spi.Page;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ConnectorPageSource;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -72,7 +73,7 @@ public class OrcDeleteDeltaPageSource
             Path path,
             long fileSize,
             OrcReaderOptions options,
-            String sessionUser,
+            ConnectorIdentity identity,
             Configuration configuration,
             HdfsEnvironment hdfsEnvironment,
             FileFormatDataSourceStats stats)
@@ -80,8 +81,8 @@ public class OrcDeleteDeltaPageSource
         this.stats = requireNonNull(stats, "stats is null");
 
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(sessionUser, path, configuration);
-            FSDataInputStream inputStream = hdfsEnvironment.doAs(sessionUser, () -> fileSystem.open(path));
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(identity, path, configuration);
+            FSDataInputStream inputStream = hdfsEnvironment.doAs(identity.getUser(), () -> fileSystem.open(path));
             orcDataSource = new HdfsOrcDataSource(
                     new OrcDataSourceId(path.toString()),
                     fileSize,

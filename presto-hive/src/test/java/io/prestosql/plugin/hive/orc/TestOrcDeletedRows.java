@@ -21,6 +21,7 @@ import io.prestosql.spi.Page;
 import io.prestosql.spi.block.Block;
 import io.prestosql.spi.block.BlockBuilder;
 import io.prestosql.spi.block.RunLengthEncodedBlock;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
@@ -28,6 +29,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.util.Optional;
 import java.util.Set;
 
 import static io.prestosql.plugin.hive.HiveTestUtils.HDFS_ENVIRONMENT;
@@ -90,9 +92,10 @@ public class TestOrcDeletedRows
     private OrcDeletedRows createOrcDeletedRows(AcidInfo acidInfo)
     {
         JobConf configuration = new JobConf(new Configuration(false));
+        ConnectorIdentity identity = new ConnectorIdentity("test", Optional.empty(), Optional.empty());
         OrcDeleteDeltaPageSourceFactory pageSourceFactory = new OrcDeleteDeltaPageSourceFactory(
                 new OrcReaderOptions(),
-                "test",
+                identity,
                 configuration,
                 HDFS_ENVIRONMENT,
                 new FileFormatDataSourceStats());
@@ -100,7 +103,7 @@ public class TestOrcDeletedRows
         return new OrcDeletedRows(
                 "bucket_00000",
                 pageSourceFactory,
-                "test",
+                identity,
                 configuration,
                 HDFS_ENVIRONMENT,
                 acidInfo);

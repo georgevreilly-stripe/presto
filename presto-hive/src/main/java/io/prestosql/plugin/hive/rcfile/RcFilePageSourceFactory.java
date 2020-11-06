@@ -134,7 +134,7 @@ public class RcFilePageSourceFactory
 
         FSDataInputStream inputStream;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), path, configuration);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getIdentity(), path, configuration);
             inputStream = hdfsEnvironment.doAs(session.getUser(), () -> fileSystem.open(path));
         }
         catch (Exception e) {

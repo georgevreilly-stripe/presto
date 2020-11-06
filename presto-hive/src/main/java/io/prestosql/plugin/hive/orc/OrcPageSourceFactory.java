@@ -40,6 +40,7 @@ import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.FixedPageSource;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.TupleDomain;
+import io.prestosql.spi.security.ConnectorIdentity;
 import io.prestosql.spi.type.Type;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -159,7 +160,7 @@ public class OrcPageSourceFactory
 
         ConnectorPageSource orcPageSource = createOrcPageSource(
                 hdfsEnvironment,
-                session.getUser(),
+                session.getIdentity(),
                 configuration,
                 path,
                 start,
@@ -190,7 +191,7 @@ public class OrcPageSourceFactory
 
     private static OrcPageSource createOrcPageSource(
             HdfsEnvironment hdfsEnvironment,
-            String sessionUser,
+            ConnectorIdentity identity,
             Configuration configuration,
             Path path,
             long start,
@@ -211,9 +212,10 @@ public class OrcPageSourceFactory
         }
         checkArgument(!effectivePredicate.isNone());
 
+        String sessionUser = identity.getUser();
         OrcDataSource orcDataSource;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(sessionUser, path, configuration);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(identity, path, configuration);
             FSDataInputStream inputStream = hdfsEnvironment.doAs(sessionUser, () -> fileSystem.open(path));
             orcDataSource = new HdfsOrcDataSource(
                     new OrcDataSourceId(path.toString()),
@@ -349,8 +351,8 @@ public class OrcPageSourceFactory
             Optional<OrcDeletedRows> deletedRows = acidInfo.map(locations ->
                     new OrcDeletedRows(
                             path.getName(),
-                            new OrcDeleteDeltaPageSourceFactory(options, sessionUser, configuration, hdfsEnvironment, stats),
-                            sessionUser,
+                            new OrcDeleteDeltaPageSourceFactory(options, identity, configuration, hdfsEnvironment, stats),
+                            identity,
                             configuration,
                             hdfsEnvironment,
                             locations));

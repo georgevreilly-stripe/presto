@@ -14,6 +14,7 @@
 package io.prestosql.plugin.hive;
 
 import com.google.common.primitives.Shorts;
+import io.airlift.log.Logger;
 import io.prestosql.hadoop.HadoopNative;
 import io.prestosql.plugin.hive.authentication.GenericExceptionAction;
 import io.prestosql.plugin.hive.authentication.HdfsAuthentication;
@@ -43,6 +44,9 @@ public class HdfsEnvironment
     private final HdfsAuthentication hdfsAuthentication;
     private final FsPermission newDirectoryPermissions;
     private final boolean verifyChecksum;
+    private static ThreadLocal<ConnectorIdentity> connectorIdentityThreadLocal
+            = new ThreadLocal<>();
+    private static final Logger log = Logger.get(HdfsEnvironment.class);
 
     @Inject
     public HdfsEnvironment(
@@ -62,16 +66,33 @@ public class HdfsEnvironment
         return hdfsConfiguration.getConfiguration(context, path.toUri());
     }
 
+    public static ConnectorIdentity getConnectorIdentity()
+    {
+        return connectorIdentityThreadLocal.get();
+    }
+
+    public static void setConnectorIdentity(ConnectorIdentity identity)
+    {
+        log.info("setConnectorIdentity: %s", identity);
+        connectorIdentityThreadLocal.set(identity);
+    }
+
+    public static void resetConnectorIdentity()
+    {
+        connectorIdentityThreadLocal.remove();
+    }
+
     public FileSystem getFileSystem(HdfsContext context, Path path)
             throws IOException
     {
-        return getFileSystem(context.getIdentity().getUser(), path, getConfiguration(context, path));
+        return getFileSystem(context.getIdentity(), path, getConfiguration(context, path));
     }
 
-    public FileSystem getFileSystem(String user, Path path, Configuration configuration)
+    public FileSystem getFileSystem(ConnectorIdentity identity, Path path, Configuration configuration)
             throws IOException
     {
-        return hdfsAuthentication.doAs(user, () -> {
+        setConnectorIdentity(identity);
+        return hdfsAuthentication.doAs(identity.getUser(), () -> {
             FileSystem fileSystem = path.getFileSystem(configuration);
             fileSystem.setVerifyChecksum(verifyChecksum);
             return fileSystem;

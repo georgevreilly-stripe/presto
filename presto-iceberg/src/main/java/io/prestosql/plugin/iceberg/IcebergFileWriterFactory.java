@@ -164,7 +164,7 @@ public class IcebergFileWriterFactory
             ConnectorSession session)
     {
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), outputPath, jobConf);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getIdentity(), outputPath, jobConf);
             OrcDataSink orcDataSink = new OutputStreamOrcDataSink(fileSystem.create(outputPath));
             Callable<Void> rollbackAction = () -> {
                 fileSystem.delete(outputPath, false);

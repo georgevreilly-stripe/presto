@@ -227,6 +227,7 @@ public class BackgroundHiveSplitLoader
                 ListenableFuture<?> future;
                 taskExecutionLock.readLock().lock();
                 try {
+                    HdfsEnvironment.resetConnectorIdentity();
                     future = loadSplits();
                 }
                 catch (Throwable e) {
@@ -495,13 +496,13 @@ public class BackgroundHiveSplitLoader
         if (tableBucketInfo.isPresent()) {
             ListenableFuture<?> lastResult = immediateFuture(null); // TODO document in addToQueue() that it is sufficient to hold on to last returned future
             for (Path readPath : readPaths) {
-                lastResult = hiveSplitSource.addToQueue(getBucketedSplits(readPath, fs, splitFactory, tableBucketInfo.get(), bucketConversion, splittable, acidInfo));
+                lastResult = hiveSplitSource.addToQueue(getBucketedSplits(readPath, splitFactory, tableBucketInfo.get(), bucketConversion, splittable, acidInfo));
             }
             return lastResult;
         }
 
         for (Path readPath : readPaths) {
-            fileIterators.addLast(createInternalHiveSplitIterator(readPath, fs, splitFactory, splittable, acidInfo));
+            fileIterators.addLast(createInternalHiveSplitIterator(readPath, splitFactory, splittable, acidInfo));
         }
 
         return COMPLETED_FUTURE;
@@ -531,16 +532,17 @@ public class BackgroundHiveSplitLoader
                 .anyMatch(name -> name.equals("UseFileSplitsFromInputFormat"));
     }
 
-    private Iterator<InternalHiveSplit> createInternalHiveSplitIterator(Path path, FileSystem fileSystem, InternalHiveSplitFactory splitFactory, boolean splittable, Optional<AcidInfo> acidInfo)
+    private Iterator<InternalHiveSplit> createInternalHiveSplitIterator(Path path, InternalHiveSplitFactory splitFactory, boolean splittable, Optional<AcidInfo> acidInfo)
+            throws IOException
     {
-        return Streams.stream(new HiveFileIterator(table, path, fileSystem, directoryLister, namenodeStats, recursiveDirWalkerEnabled ? RECURSE : IGNORED, ignoreAbsentPartitions))
+        return Streams.stream(new HiveFileIterator(table, hdfsEnvironment, hdfsContext, path, directoryLister, namenodeStats, recursiveDirWalkerEnabled ? RECURSE : IGNORED, ignoreAbsentPartitions))
                 .map(status -> splitFactory.createInternalHiveSplit(status, OptionalInt.empty(), splittable, acidInfo))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .iterator();
     }
 
-    private List<InternalHiveSplit> getBucketedSplits(Path path, FileSystem fileSystem, InternalHiveSplitFactory splitFactory, BucketSplitInfo bucketSplitInfo, Optional<BucketConversion> bucketConversion, boolean splittable, Optional<AcidInfo> acidInfo)
+    private List<InternalHiveSplit> getBucketedSplits(Path path, InternalHiveSplitFactory splitFactory, BucketSplitInfo bucketSplitInfo, Optional<BucketConversion> bucketConversion, boolean splittable, Optional<AcidInfo> acidInfo)
     {
         int readBucketCount = bucketSplitInfo.getReadBucketCount();
         int tableBucketCount = bucketSplitInfo.getTableBucketCount();
@@ -550,7 +552,7 @@ public class BackgroundHiveSplitLoader
         // list all files in the partition
         List<LocatedFileStatus> files = new ArrayList<>(partitionBucketCount);
         try {
-            Iterators.addAll(files, new HiveFileIterator(table, path, fileSystem, directoryLister, namenodeStats, FAIL, ignoreAbsentPartitions));
+            Iterators.addAll(files, new HiveFileIterator(table, hdfsEnvironment, hdfsContext, path, directoryLister, namenodeStats, FAIL, ignoreAbsentPartitions));
         }
         catch (NestedDirectoryNotAllowedException e) {
             // Fail here to be on the safe side. This seems to be the same as what Hive does

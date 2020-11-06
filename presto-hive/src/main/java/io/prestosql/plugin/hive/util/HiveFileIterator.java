@@ -16,6 +16,8 @@ package io.prestosql.plugin.hive.util;
 import com.google.common.collect.AbstractIterator;
 import io.airlift.stats.TimeStat;
 import io.prestosql.plugin.hive.DirectoryLister;
+import io.prestosql.plugin.hive.HdfsEnvironment;
+import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.NamenodeStats;
 import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.spi.PrestoException;
@@ -47,7 +49,8 @@ public class HiveFileIterator
 
     private final Deque<Path> paths = new ArrayDeque<>();
     private final Table table;
-    private final FileSystem fileSystem;
+    private final HdfsEnvironment hdfsEnvironment;
+    private final HdfsContext hdfsContext;
     private final DirectoryLister directoryLister;
     private final NamenodeStats namenodeStats;
     private final NestedDirectoryPolicy nestedDirectoryPolicy;
@@ -57,8 +60,9 @@ public class HiveFileIterator
 
     public HiveFileIterator(
             Table table,
+            HdfsEnvironment hdfsEnvironment,
+            HdfsContext hdfsContext,
             Path path,
-            FileSystem fileSystem,
             DirectoryLister directoryLister,
             NamenodeStats namenodeStats,
             NestedDirectoryPolicy nestedDirectoryPolicy,
@@ -66,7 +70,8 @@ public class HiveFileIterator
     {
         paths.addLast(requireNonNull(path, "path is null"));
         this.table = requireNonNull(table, "table is null");
-        this.fileSystem = requireNonNull(fileSystem, "fileSystem is null");
+        this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfs environment is null");
+        this.hdfsContext = requireNonNull(hdfsContext, "hdfs context is null");
         this.directoryLister = requireNonNull(directoryLister, "directoryLister is null");
         this.namenodeStats = requireNonNull(namenodeStats, "namenodeStats is null");
         this.nestedDirectoryPolicy = requireNonNull(nestedDirectoryPolicy, "nestedDirectoryPolicy is null");
@@ -114,13 +119,14 @@ public class HiveFileIterator
             if (ignoreAbsentPartitions && !exists(path)) {
                 return emptyIterator();
             }
-            return new FileStatusIterator(table, path, fileSystem, directoryLister, namenodeStats);
+            return new FileStatusIterator(table, hdfsEnvironment, hdfsContext, path, directoryLister, namenodeStats);
         }
     }
 
     private boolean exists(Path path)
     {
         try {
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path);
             return fileSystem.exists(path);
         }
         catch (IOException e) {
@@ -142,11 +148,12 @@ public class HiveFileIterator
         private final NamenodeStats namenodeStats;
         private final RemoteIterator<LocatedFileStatus> fileStatusIterator;
 
-        private FileStatusIterator(Table table, Path path, FileSystem fileSystem, DirectoryLister directoryLister, NamenodeStats namenodeStats)
+        private FileStatusIterator(Table table, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, Path path, DirectoryLister directoryLister, NamenodeStats namenodeStats)
         {
             this.path = path;
             this.namenodeStats = namenodeStats;
             try {
+                FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path);
                 this.fileStatusIterator = directoryLister.list(fileSystem, table, path);
             }
             catch (IOException e) {

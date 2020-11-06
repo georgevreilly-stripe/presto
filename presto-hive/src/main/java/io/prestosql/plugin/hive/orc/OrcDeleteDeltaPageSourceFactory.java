@@ -16,6 +16,7 @@ package io.prestosql.plugin.hive.orc;
 import io.prestosql.orc.OrcReaderOptions;
 import io.prestosql.plugin.hive.FileFormatDataSourceStats;
 import io.prestosql.plugin.hive.HdfsEnvironment;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
@@ -24,20 +25,20 @@ import static java.util.Objects.requireNonNull;
 public class OrcDeleteDeltaPageSourceFactory
 {
     private final OrcReaderOptions options;
-    private final String sessionUser;
+    private final ConnectorIdentity identity;
     private final Configuration configuration;
     private final HdfsEnvironment hdfsEnvironment;
     private final FileFormatDataSourceStats stats;
 
     public OrcDeleteDeltaPageSourceFactory(
             OrcReaderOptions options,
-            String sessionUser,
+            ConnectorIdentity identity,
             Configuration configuration,
             HdfsEnvironment hdfsEnvironment,
             FileFormatDataSourceStats stats)
     {
         this.options = requireNonNull(options, "options is null");
-        this.sessionUser = requireNonNull(sessionUser, "sessionUser is null");
+        this.identity = requireNonNull(identity, "identity is null");
         this.configuration = requireNonNull(configuration, "configuration is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.stats = requireNonNull(stats, "stats is null");
@@ -49,7 +50,7 @@ public class OrcDeleteDeltaPageSourceFactory
                 path,
                 fileSize,
                 options,
-                sessionUser,
+                identity,
                 configuration,
                 hdfsEnvironment,
                 stats);

@@ -24,7 +24,9 @@ import io.prestosql.parquet.ParquetDataSource;
 import io.prestosql.parquet.ParquetDataSourceId;
 import io.prestosql.parquet.ParquetReaderOptions;
 import io.prestosql.plugin.hive.FileFormatDataSourceStats;
+import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.spi.PrestoException;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
 
@@ -47,6 +49,7 @@ public class HdfsParquetDataSource
 {
     private final ParquetDataSourceId id;
     private final long size;
+    private final ConnectorIdentity identity;
     private final FSDataInputStream inputStream;
     private long readTimeNanos;
     private long readBytes;
@@ -54,12 +57,14 @@ public class HdfsParquetDataSource
     private final ParquetReaderOptions options;
 
     public HdfsParquetDataSource(
+            ConnectorIdentity identity,
             ParquetDataSourceId id,
             long size,
             FSDataInputStream inputStream,
             FileFormatDataSourceStats stats,
             ParquetReaderOptions options)
     {
+        this.identity = requireNonNull(identity, "identity is null");
         this.id = requireNonNull(id, "id is null");
         this.size = size;
         this.inputStream = inputStream;
@@ -110,6 +115,7 @@ public class HdfsParquetDataSource
         readBytes += bufferLength;
 
         long start = System.nanoTime();
+        HdfsEnvironment.setConnectorIdentity(identity);
         try {
             inputStream.readFully(position, buffer, bufferOffset, bufferLength);
         }
@@ -218,13 +224,14 @@ public class HdfsParquetDataSource
     }
 
     public static HdfsParquetDataSource buildHdfsParquetDataSource(
+            ConnectorIdentity identity,
             FSDataInputStream inputStream,
             Path path,
             long fileSize,
             FileFormatDataSourceStats stats,
             ParquetReaderOptions options)
     {
-        return new HdfsParquetDataSource(new ParquetDataSourceId(path.toString()), fileSize, inputStream, stats, options);
+        return new HdfsParquetDataSource(identity, new ParquetDataSourceId(path.toString()), fileSize, inputStream, stats, options);
     }
 
     public static List<DiskRange> mergeAdjacentDiskRanges(Collection<DiskRange> diskRanges, DataSize maxMergeDistance, DataSize maxReadSize)

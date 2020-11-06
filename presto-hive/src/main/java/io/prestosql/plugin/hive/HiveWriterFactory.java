@@ -249,7 +249,7 @@ public class HiveWriterFactory
 
         // make sure the FileSystem is created with the correct Configuration object
         try {
-            hdfsEnvironment.getFileSystem(session.getUser(), writePath, conf);
+            hdfsEnvironment.getFileSystem(session.getIdentity(), writePath, conf);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed getting FileSystem: " + writePath, e);
@@ -499,7 +499,7 @@ public class HiveWriterFactory
         if (!sortedBy.isEmpty()) {
             FileSystem fileSystem;
             try {
-                fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), path, conf);
+                fileSystem = hdfsEnvironment.getFileSystem(session.getIdentity(), path, conf);
             }
             catch (IOException e) {
                 throw new PrestoException(HIVE_WRITER_OPEN_ERROR, e);
