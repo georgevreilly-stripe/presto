@@ -39,6 +39,7 @@ public class OrcDeleteDeltaPageSourceFactory
     {
         this.options = requireNonNull(options, "options is null");
         this.identity = requireNonNull(identity, "identity is null");
+        requireNonNull(identity.getUser(), "identity user is null");
         this.configuration = requireNonNull(configuration, "configuration is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.stats = requireNonNull(stats, "stats is null");
