@@ -21,6 +21,7 @@ import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.NamenodeStats;
 import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.spi.PrestoException;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
@@ -147,11 +148,13 @@ public class HiveFileIterator
         private final Path path;
         private final NamenodeStats namenodeStats;
         private final RemoteIterator<LocatedFileStatus> fileStatusIterator;
+        private final ConnectorIdentity identity;
 
         private FileStatusIterator(Table table, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, Path path, DirectoryLister directoryLister, NamenodeStats namenodeStats)
         {
             this.path = path;
             this.namenodeStats = namenodeStats;
+            this.identity = hdfsContext.getIdentity();
             try {
                 FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path);
                 this.fileStatusIterator = directoryLister.list(fileSystem, table, path);
@@ -165,6 +168,7 @@ public class HiveFileIterator
         public boolean hasNext()
         {
             try {
+                HdfsEnvironment.setConnectorIdentity(identity);
                 return fileStatusIterator.hasNext();
             }
             catch (IOException e) {
@@ -176,6 +180,7 @@ public class HiveFileIterator
         public LocatedFileStatus next()
         {
             try {
+                HdfsEnvironment.setConnectorIdentity(identity);
                 return fileStatusIterator.next();
             }
             catch (IOException e) {

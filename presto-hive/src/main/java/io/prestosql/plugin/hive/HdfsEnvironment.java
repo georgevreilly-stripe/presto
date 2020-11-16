@@ -79,6 +79,7 @@ public class HdfsEnvironment
 
     public static void resetConnectorIdentity()
     {
+        log.info("resetConnectorIdentity");
         connectorIdentityThreadLocal.remove();
     }
 
