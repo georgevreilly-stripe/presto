@@ -446,6 +446,7 @@ public class IcebergMetadata
         AppendFiles appendFiles = transaction.newFastAppend();
         for (CommitTaskData task : commitTasks) {
             HdfsContext context = new HdfsContext(session, table.getSchemaName(), table.getTableName());
+            HdfsEnvironment.setConnectorIdentity(context.getIdentity());
             Configuration configuration = hdfsEnvironment.getConfiguration(context, new Path(task.getPath()));
 
             DataFiles.Builder builder = DataFiles.builder(icebergTable.spec())

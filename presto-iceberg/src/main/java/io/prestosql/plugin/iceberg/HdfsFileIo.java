@@ -39,6 +39,7 @@ public class HdfsFileIo
     {
         this.environment = requireNonNull(environment, "environment is null");
         this.context = requireNonNull(context, "context is null");
+        HdfsEnvironment.setConnectorIdentity(context.getIdentity());
     }
 
     @Override
