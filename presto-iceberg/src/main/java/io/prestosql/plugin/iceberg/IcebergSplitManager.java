@@ -58,7 +58,7 @@ public class IcebergSplitManager
 
         // TODO Use residual. Right now there is no way to propagate residual to presto but at least we can
         //      propagate it at split level so the parquet pushdown can leverage it.
-        IcebergSplitSource splitSource = new IcebergSplitSource(tableScan.planTasks());
+        IcebergSplitSource splitSource = new IcebergSplitSource(tableScan.planTasks(), session.getIdentity());
 
         return new ClassLoaderSafeConnectorSplitSource(splitSource, Thread.currentThread().getContextClassLoader());
     }

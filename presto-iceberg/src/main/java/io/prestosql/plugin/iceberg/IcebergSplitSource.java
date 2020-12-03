@@ -15,9 +15,11 @@ package io.prestosql.plugin.iceberg;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
+import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.spi.connector.ConnectorPartitionHandle;
 import io.prestosql.spi.connector.ConnectorSplit;
 import io.prestosql.spi.connector.ConnectorSplitSource;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.iceberg.CombinedScanTask;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.PartitionField;
@@ -51,11 +53,12 @@ public class IcebergSplitSource
 {
     private final CloseableIterable<CombinedScanTask> combinedScanIterable;
     private final Iterator<FileScanTask> fileScanIterator;
+    private final ConnectorIdentity identity;
 
-    public IcebergSplitSource(CloseableIterable<CombinedScanTask> combinedScanIterable)
+    public IcebergSplitSource(CloseableIterable<CombinedScanTask> combinedScanIterable, ConnectorIdentity identity)
     {
         this.combinedScanIterable = requireNonNull(combinedScanIterable, "combinedScanIterable is null");
-
+        this.identity = requireNonNull(identity, "identity is null");
         this.fileScanIterator = Streams.stream(combinedScanIterable)
                 .map(CombinedScanTask::files)
                 .flatMap(Collection::stream)
@@ -66,6 +69,7 @@ public class IcebergSplitSource
     public CompletableFuture<ConnectorSplitBatch> getNextBatch(ConnectorPartitionHandle partitionHandle, int maxSize)
     {
         // TODO: move this to a background thread
+        HdfsEnvironment.setConnectorIdentity(identity);
         List<ConnectorSplit> splits = new ArrayList<>();
         Iterator<FileScanTask> iterator = limit(fileScanIterator, maxSize);
         while (iterator.hasNext()) {
